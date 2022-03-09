@@ -1,22 +1,43 @@
 ## Buildstage ##
 FROM lsiobase/alpine:3.11 as buildstage
 
-COPY . /usr/bin
+## Download dependencies ##
+RUN apk add --no-cache \
+	wget \
+	git
 
-#RUN sed -i -e 's:minutes=\([[:digit:]]\+\):minutes=30:g' /app/bazarr/scheduler.py
+WORKDIR /root-layer/build
 
-RUN \
-        apk update --no-cache && \
-        apk add --no-cache py3-pip python3-dev swig ffmpeg-dev git libtool autoconf automake musl-dev bison make linux-headers g++ && \
-        mkdir -p /tmp/delme && cd /tmp/delme && \
-        git clone https://github.com/cmusphinx/sphinxbase.git && \
-        git clone https://github.com/cmusphinx/pocketsphinx.git && \
-        git clone https://github.com/sc0ty/subsync.git && \
-        cd sphinxbase && ./autogen.sh && make install && cd - && \
-        cd pocketsphinx && ./autogen.sh && make install && cd - && \
-        cd subsync && \
-        git checkout --detach 0.17 && \
-        sed "/configpath = os.path.join/i configdir = os.path.join('/config', appname)\nshareddir = configdir" subsync/config.py.template > subsync/config.py && \
-        pip3 install . && \
-        cd / && rm -rf /tmp/delme && \
-        apk del python3-dev swig ffmpeg-dev git libtool autoconf automake musl-dev bison make linux-headers g++
+RUN wget https://sourceforge.net/projects/cmusphinx/files/sphinxbase/5prealpha/sphinxbase-5prealpha.tar.gz/download -O sphinxbase.tar.gz \
+	&& tar -xzvf sphinxbase.tar.gz \
+	&& rm sphinxbase.tar.gz
+
+RUN wget https://sourceforge.net/projects/cmusphinx/files/pocketsphinx/5prealpha/pocketsphinx-5prealpha.tar.gz/download -O pocketsphinx.tar.gz \
+	&& tar -xzvf pocketsphinx.tar.gz \
+	&& rm pocketsphinx.tar.gz
+
+ENV FFMPEGVER https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+
+RUN mkdir /root-layer/build/ffmpeg
+RUN cd /root-layer/build \
+	&& wget "$FFMPEGVER" \
+	&& tar xf ffmpeg-release-amd64-static.tar.xz --directory ffmpeg/ \
+	&& rm ffmpeg-release-amd64-static.tar.xz
+
+## Download Subsync ##
+RUN git clone https://github.com/sc0ty/subsync.git /root-layer/app/subsync \
+    && cd /root-layer/app/subsync \ 
+    && git checkout --detach 0.17
+WORKDIR /root-layer/
+COPY app/ /root-layer/app/
+	
+# add local files
+COPY root/ /root-layer/
+
+RUN chmod +x /root-layer/app/subsync
+	
+## Single layer deployed image ##
+FROM scratch
+
+# Add files from buildstage
+COPY --from=buildstage /root-layer/ /
