@@ -2,8 +2,6 @@ import os
 import sys
 
 appname = 'subsync'
-version = '0.17.0'
-
 
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     datadir = sys._MEIPASS
