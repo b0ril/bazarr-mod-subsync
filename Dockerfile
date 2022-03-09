@@ -25,8 +25,9 @@ RUN cd /root-layer/build \
 	&& rm ffmpeg-release-amd64-static.tar.xz
 
 ## Download Subsync ##
-RUN git clone https://github.com/sc0ty/subsync.git /root-layer/app/subsync
-RUN git checkout --detach 0.17
+RUN git clone https://github.com/sc0ty/subsync.git /root-layer/app/subsync \
+    && cd /root-layer/app/subsync \ 
+    && git checkout --detach 0.17
 WORKDIR /root-layer/
 COPY app/ /root-layer/app/
 	
